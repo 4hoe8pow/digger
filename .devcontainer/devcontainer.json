@@ -1,0 +1,55 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
+{
+  "name": "Tonkatsu",
+  "build": {
+    "dockerfile": "../Dockerfile"
+  },
+
+  // Features to add to the dev container. More info: https://containers.dev/features.
+  // "features": {},
+
+  // Use 'forwardPorts' to make a list of ports inside the container available locally.
+  "forwardPorts": [ 5173 ],
+  "appPort": [3000],
+
+  // Use 'postCreateCommand' to run commands after the container is created.
+  //"postCreateCommand": "fish"
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "editor.formatOnPaste": true,
+        "editor.formatOnSave": true,
+        "editor.tabSize": 4
+      },
+      "extensions": [
+        //typesctipt
+        "ms-vscode.vscode-typescript-next",
+        //Rust
+        "swellaby.rust-pack",
+        //env file
+        "mikestead.dotenv",
+        //support toml
+        "tamasfe.even-better-toml",
+        //全角スペース検知
+        "saikou9901.evilinspector",
+        //CI
+        "github.vscode-github-actions",
+        //フォーマッタ
+        "esbenp.prettier-vscode",
+        //csv
+        "mechatroner.rainbow-csv",
+        //log
+        "emilast.logfilehighlighter",
+        //svelte
+        "svelte.svelte-vscode",
+        //unit test
+        "vitest.explorer",
+        //Integration test
+        "ms-playwright.playwright"
+      ]
+    }
+  },
+  "runArgs" : ["--name", "tonkatsu"]
+}
