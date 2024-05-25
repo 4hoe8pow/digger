@@ -11,7 +11,6 @@
 
   // Use 'forwardPorts' to make a list of ports inside the container available locally.
   "forwardPorts": [ 5173 ],
-  "appPort": [3000],
 
   // Use 'postCreateCommand' to run commands after the container is created.
   //"postCreateCommand": "fish"
@@ -21,7 +20,13 @@
       "settings": {
         "editor.formatOnPaste": true,
         "editor.formatOnSave": true,
-        "editor.tabSize": 4
+        "editor.tabSize": 4,
+        "terminal.integrated.profiles.linux": {
+          "fish": {
+            "path": "/usr/sbin/fish"
+          }
+        },
+        "terminal.integrated.defaultProfile.linux": "fish"
       },
       "extensions": [
         //typesctipt
