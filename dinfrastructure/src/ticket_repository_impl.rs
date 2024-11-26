@@ -78,17 +78,16 @@ impl TicketRepository for TicketRepositoryImpl {
     }
 
     fn save(&mut self, update_ticket: Ticket) -> Result<(), DomainError> {
-        // キャッシュから該当するIDのチケットを探す
         let mut cache = self.ticket_cache.write().unwrap();
-        if let Some(ticket) = cache.iter_mut().find(|ticket| **ticket == update_ticket) {
-            // 該当するチケットを見つけて更新
-            *ticket = update_ticket;
-        } else {
-            // 見つからない場合はエラーを返す
-            return Err(DomainError::TicketNotFound("Ticket not found".to_string()));
-        }
 
-        // キャッシュをファイルに書き戻す
+        // Find and update the ticket, or return an error if not found
+        cache
+            .iter_mut()
+            .find(|ticket| **ticket == update_ticket)
+            .map(|ticket| *ticket = update_ticket)
+            .ok_or(DomainError::TicketNotFound("Ticket not found".to_string()))?;
+
+        // Write the updated cache to the file
         self.update_tickets_in_file(&cache)?;
 
         Ok(())
