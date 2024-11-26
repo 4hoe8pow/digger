@@ -1,4 +1,4 @@
-use ratatui::style::{Color, palette::tailwind};
+use ratatui::style::{palette::tailwind, Color};
 
 pub struct TableColors {
     pub header_bg: Color,

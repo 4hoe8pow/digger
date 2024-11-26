@@ -1,34 +1,52 @@
 use crate::dtos::ticket_dto::TicketDTO;
 use crate::input_ports::terminal_input_port::TerminalInputPort;
 use crate::output_ports::terminal_output_port::TerminalOutputPort;
-use color_eyre::{Result, eyre::Ok};
+use color_eyre::{eyre::Ok, Result};
 use ddomain::repositories::ticket_repository::TicketRepository;
 use ddomain::{entites::ticket::Ticket, value_objects::app_mode::AppMode};
 use ratatui::{
-    Frame,
     crossterm::event::{self, Event, KeyCode},
     layout::{Constraint, Layout},
+    Frame,
 };
 use tui_textarea::{Input, Key, TextArea};
+
+use std::collections::HashMap;
 
 pub struct TerminalInteractor<'a, R: TicketRepository, O: TerminalOutputPort> {
     selected_ticket_index: Option<usize>,
     items: Vec<Ticket>,
     repository: R,
     output_port: O,
-    text_area: TextArea<'a>,
+    text_areas: HashMap<String, TextArea<'a>>,
+    active_text_area: String,
 }
 
 impl<'a, R: TicketRepository, O: TerminalOutputPort> TerminalInteractor<'a, R, O> {
     pub fn new(repository: R, output_port: O) -> Result<Self> {
         let items = repository.fetch_tickets()?;
+        let mut text_areas = HashMap::new();
+        text_areas.insert("title".to_string(), TextArea::new(vec![]));
+        text_areas.insert("completion_condition".to_string(), TextArea::new(vec![]));
+        text_areas.insert("level".to_string(), TextArea::new(vec![]));
+        text_areas.insert("status".to_string(), TextArea::new(vec![]));
+
         Ok(Self {
             selected_ticket_index: Some(0),
             items,
             repository,
             output_port,
-            text_area: TextArea::new(vec![]),
+            text_areas,
+            active_text_area: "title".to_string(),
         })
+    }
+
+    fn cycle_active_text_area(&mut self) {
+        // サイクルでアクティブなテキストエリアを切り替え
+        let keys: Vec<&String> = self.text_areas.keys().collect();
+        if let Some(pos) = keys.iter().position(|key| **key == self.active_text_area) {
+            self.active_text_area = keys[(pos + 1) % keys.len()].clone().to_string();
+        }
     }
 }
 
@@ -102,47 +120,102 @@ impl<'a, R: TicketRepository, O: TerminalOutputPort> TerminalInputPort
 
         Ok(())
     }
+    fn mode_amend(&mut self, frame: &mut Frame) -> Result<()> {
+        // レイアウトを設定（横並びに分割）
+        let rects = Layout::horizontal([
+            Constraint::Percentage(25),
+            Constraint::Percentage(25),
+            Constraint::Percentage(25),
+            Constraint::Percentage(25),
+        ])
+        .split(frame.area());
 
-    fn mode_register(&mut self, frame: &mut Frame) -> Result<()> {
-        // レイアウトを設定
-        let rects =
-            Layout::vertical([Constraint::Min(5), Constraint::Length(4)]).split(frame.area());
         let selected_ticket = self
             .selected_ticket_index
             .and_then(|i| self.items.get(i).cloned())
             .unwrap();
-        // テキストエリアをフォームの一部として描画
-        self.output_port.draw_ticket_form(
-            frame,
-            rects[0],
-            &mut self.text_area,
-            selected_ticket.into(),
-        );
 
-        // フッターの描画
+        // 各テキストエリアを描画
+        for (i, (key, text_area)) in self.text_areas.iter_mut().enumerate() {
+            self.output_port.draw_ticket_form(
+                frame,
+                rects[i],
+                text_area,
+                selected_ticket.clone().into(),
+            );
+        }
+
+        // フッターを描画
         self.output_port
-            .draw_footer(frame, rects[1], AppMode::Register.to_string());
+            .draw_footer(frame, frame.area(), AppMode::Amend.to_string());
 
+        Ok(())
+    }
+    fn mode_raise(&mut self, frame: &mut Frame) -> Result<()> {
         Ok(())
     }
 
     fn handle_input(&mut self, key: KeyCode) -> Result<()> {
         match key {
             KeyCode::Char(c) => {
-                // Construct the Input with Key::Char and no modifiers (no Ctrl, Alt, or Shift)
-                let input = Input {
-                    key: Key::Char(c),
-                    ctrl: false,
-                    alt: false,
-                    shift: false,
-                };
-                self.text_area.input(input);
+                if let Some(text_area) = self.text_areas.get_mut(&self.active_text_area) {
+                    let input = Input {
+                        key: Key::Char(c),
+                        ctrl: false,
+                        alt: false,
+                        shift: false,
+                    };
+                    text_area.input(input);
+                }
             }
             KeyCode::Backspace | KeyCode::Delete => {
-                self.text_area.delete_char();
+                if let Some(text_area) = self.text_areas.get_mut(&self.active_text_area) {
+                    text_area.delete_char();
+                }
+            }
+            KeyCode::Tab => {
+                // タブキーでアクティブエリアを切り替え
+                self.cycle_active_text_area();
             }
             _ => {}
         }
+        Ok(())
+    }
+
+    fn submit(&mut self) -> Result<()> {
+        // 現在選択されているチケットを取得
+        let mut selected_ticket = self
+            .selected_ticket_index
+            .and_then(|i| self.items.get(i).cloned())
+            .ok_or_else(|| color_eyre::eyre::eyre!("No ticket selected"))?;
+
+        // DTOの生成
+        let mut dto =
+            self.text_areas
+                .iter()
+                .fold(TicketDTO::default(), |mut dto, (key, text_area)| {
+                    let content = text_area.lines().join("\n");
+                    match key.as_str() {
+                        "title" => dto.title = content,
+                        "completion_condition" => dto.completion_condition = content,
+                        "level" => dto.level = content,
+                        "status" => dto.status = content,
+                        _ => {}
+                    }
+                    dto
+                });
+
+        selected_ticket.substitute(|ticket_mut| {
+            dto.id = ticket_mut.id.clone();
+            dto.created_at = *ticket_mut.created_at;
+            dto.resolved_at = *ticket_mut.resolved_at;
+        });
+
+        // 保存
+        self.repository.save(dto.into())?;
+        self.output_port
+            .notify("Submission successful!".to_string());
+
         Ok(())
     }
 }

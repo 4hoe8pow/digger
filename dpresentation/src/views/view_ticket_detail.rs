@@ -1,10 +1,10 @@
 use dapplication::dtos::ticket_dto::TicketDTO;
 use ratatui::{
-    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Span,
     widgets::{Block, Borders, Paragraph},
+    Frame,
 };
 
 pub fn view_ticket_detail(frame: &mut Frame, area: Rect, selected_ticket: TicketDTO) {

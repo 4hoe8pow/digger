@@ -1,9 +1,9 @@
-use color_eyre::{Result, eyre::Ok};
+use color_eyre::{eyre::Ok, Result};
 use dapplication::input_ports::terminal_input_port::TerminalInputPort;
 use ddomain::value_objects::app_mode::AppMode;
 use ratatui::{
-    DefaultTerminal,
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
+    DefaultTerminal,
 };
 
 pub struct TerminalController<T: TerminalInputPort> {
@@ -28,9 +28,12 @@ impl<T: TerminalInputPort> TerminalController<T> {
                 AppMode::Inquery => {
                     let _ = self.input_port.mode_inquery(frame);
                 }
-                AppMode::Register => {
-                    let _ = self.input_port.mode_register(frame);
-                },
+                AppMode::Amend => {
+                    let _ = self.input_port.mode_amend(frame);
+                }
+                AppMode::Raise => {
+                    let _ = self.input_port.mode_raise(frame);
+                }
             });
 
             if self.handle_event(event::read()?)? {
@@ -49,26 +52,33 @@ impl<T: TerminalInputPort> TerminalController<T> {
         }
 
         match (&self.mode, key.code) {
-            (_, KeyCode::Char('q')) if self.mode != AppMode::Register => return Ok(true),
+            (_, KeyCode::Char('q')) if !matches!(self.mode, AppMode::Amend | AppMode::Raise) => {
+                return Ok(true)
+            }
 
-            // Normalモード
+            // 通常時
             (AppMode::Normal, KeyCode::Char('l')) => self.mode = AppMode::Inquery,
+            (AppMode::Normal, KeyCode::Char('+')) => self.mode = AppMode::Raise,
             (AppMode::Normal, KeyCode::Char('j') | KeyCode::Down) => self.input_port.next_row()?,
             (AppMode::Normal, KeyCode::Char('k') | KeyCode::Up) => {
                 self.input_port.previous_row()?
             }
 
-            // Inqueryモード
-            (AppMode::Inquery, KeyCode::Char('l')) => self.mode = AppMode::Register,
+            // 照会
+            (AppMode::Inquery, KeyCode::Char('l')) => self.mode = AppMode::Amend,
             (AppMode::Inquery, KeyCode::Char('h') | KeyCode::Left) => self.mode = AppMode::Normal,
             (AppMode::Inquery, KeyCode::Char('j') | KeyCode::Down) => self.input_port.next_row()?,
             (AppMode::Inquery, KeyCode::Char('k') | KeyCode::Up) => {
                 self.input_port.previous_row()?
             }
 
-            // Registerモード
-            (AppMode::Register, KeyCode::Esc) => self.mode = AppMode::Inquery,
-            (AppMode::Register, _) => self.input_port.handle_input(key.code)?,
+            // 訂正
+            (AppMode::Amend, KeyCode::Esc) => self.mode = AppMode::Inquery,
+            (AppMode::Amend, _) => self.input_port.handle_input(key.code)?,
+
+            // 起票
+            (AppMode::Raise, KeyCode::Esc) => self.mode = AppMode::Normal,
+            (AppMode::Raise, _) => self.input_port.handle_input(key.code)?,
 
             // その他のキー入力
             _ => {}

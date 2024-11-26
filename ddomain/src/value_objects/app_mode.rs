@@ -6,8 +6,10 @@ pub enum AppMode {
     Normal,
     //照会
     Inquery,
-    //登録
-    Register,
+    //訂正
+    Amend,
+    //起票
+    Raise,
 }
 
 impl fmt::Display for AppMode {
@@ -15,7 +17,8 @@ impl fmt::Display for AppMode {
         let mode_str = match self {
             AppMode::Normal => "Normal",
             AppMode::Inquery => "Inquery",
-            AppMode::Register => "Register",
+            AppMode::Amend => "Amend",
+            AppMode::Raise => "Raise",
         };
         write!(f, "{}", mode_str)
     }

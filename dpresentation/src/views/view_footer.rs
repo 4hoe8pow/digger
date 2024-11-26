@@ -1,8 +1,8 @@
 use ratatui::{
-    Frame,
     layout::Rect,
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph},
+    Frame,
 };
 
 pub fn view_footer(frame: &mut Frame, area: Rect, mode: String) {

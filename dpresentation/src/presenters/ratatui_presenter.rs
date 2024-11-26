@@ -7,9 +7,9 @@ use dapplication::{
     dtos::ticket_dto::TicketDTO, output_ports::terminal_output_port::TerminalOutputPort,
 };
 use ratatui::{
-    Frame,
     layout::{Margin, Rect},
     widgets::{Scrollbar, ScrollbarOrientation, TableState},
+    Frame,
 };
 use tui_textarea::TextArea;
 
@@ -101,5 +101,9 @@ impl TerminalOutputPort for RatatuiPresenter {
             }),
             &mut self.scroll_state,
         );
+    }
+
+    fn notify(&self, message: String) {
+        todo!()
     }
 }

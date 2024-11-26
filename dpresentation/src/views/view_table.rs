@@ -1,10 +1,10 @@
 use dapplication::dtos::ticket_dto::TicketDTO;
 use ratatui::{
-    Frame,
     crossterm::style::Color,
     layout::{Constraint, Rect},
     style::Style,
     widgets::{Block, Borders, Cell, Row, Table, TableState},
+    Frame,
 };
 
 use crate::table_colors::TableColors;

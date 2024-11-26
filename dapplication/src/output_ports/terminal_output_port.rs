@@ -1,5 +1,5 @@
 use crate::dtos::ticket_dto::TicketDTO;
-use ratatui::{Frame, layout::Rect};
+use ratatui::{layout::Rect, Frame};
 use tui_textarea::TextArea;
 
 pub trait TerminalOutputPort {
@@ -25,4 +25,5 @@ pub trait TerminalOutputPort {
     fn previous_row(&mut self, items_len: usize);
     fn selected_index(&self) -> Option<usize>;
     fn render_scrollbar(&mut self, frame: &mut Frame, area: Rect);
+    fn notify(&self, message: String);
 }

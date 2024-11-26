@@ -25,7 +25,7 @@ impl TicketRepositoryImpl {
     where
         T: for<'a> Deserialize<'a>,
     {
-        let file_str = fs::read_to_string(&self.file_path).map_err(DomainError::FileRead)?;
+        let file_str = fs::read_to_string(&self.file_path).map_err(DomainError::File)?;
         if file_str.trim().is_empty() {
             Err(DomainError::EmptyFile)
         } else {
@@ -50,6 +50,15 @@ impl TicketRepositoryImpl {
             Ok(cache.len())
         }
     }
+
+    fn update_tickets_in_file(&self, tickets: &[Ticket]) -> Result<(), DomainError> {
+        let ticket_collection = TicketCollection {
+            ticket_data: tickets.to_vec(),
+        };
+        let serialized = toml::to_string(&ticket_collection).map_err(DomainError::TomlSerialize)?;
+        fs::write(&self.file_path, serialized).map_err(DomainError::File)?;
+        Ok(())
+    }
 }
 
 impl TicketRepository for TicketRepositoryImpl {
@@ -66,5 +75,22 @@ impl TicketRepository for TicketRepositoryImpl {
         } else {
             Ok(cache.clone())
         }
+    }
+
+    fn save(&mut self, update_ticket: Ticket) -> Result<(), DomainError> {
+        // キャッシュから該当するIDのチケットを探す
+        let mut cache = self.ticket_cache.write().unwrap();
+        if let Some(ticket) = cache.iter_mut().find(|ticket| **ticket == update_ticket) {
+            // 該当するチケットを見つけて更新
+            *ticket = update_ticket;
+        } else {
+            // 見つからない場合はエラーを返す
+            return Err(DomainError::TicketNotFound("Ticket not found".to_string()));
+        }
+
+        // キャッシュをファイルに書き戻す
+        self.update_tickets_in_file(&cache)?;
+
+        Ok(())
     }
 }

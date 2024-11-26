@@ -14,6 +14,12 @@ pub struct Ticket {
     completion_condition: String,
 }
 
+impl PartialEq for Ticket {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct TicketMut<'a> {
     pub id: &'a mut String,
